@@ -74,7 +74,7 @@ class Avatar:
 
         self.rays = []
         self.fov = math.radians(60)
-        self.ray_count = 0
+        self.ray_count = 12
         
         for x in range(self.ray_count):
             #ray_direction = ((x / self.ray_count) * math.radians(self.fov)) + self.direction - (math.radians(self.fov) / 2)
@@ -224,15 +224,17 @@ class Grid:
             except:
                 return self.matrix_dim[1] * self.cell_size + self.cell_size
             
-        def get_cell_cord(position: tuple, angle: math.radians = 0):
+        def get_cell_cord(position: tuple, angle: math.radians = None):
             cords = (math.floor(position[0]/ self.cell_size), math.floor(position[1] / self.cell_size))
+            #if angle is None:
+            #    pass
+            #else:
+                #if angle >= math.pi and angle < 2 * math.pi:
+                #    cords = (cords[0], cords[1] - 1)
 
-            #if angle >= math.pi and angle < 2 * math.pi:
-            #    cords = (cords[0], cords[0] - 1)
-
-            #if angle >= math.pi/2 and angle < (2 * math.pi) / 3:
-            #    cords = (cords[0] + 1, cords[0])
-
+                #if angle >= math.pi/2 and angle < (2 * math.pi) / 3:
+                #    cords = (cords[0] , cords[1])
+                #pass
             if cords[0] > self.matrix_dim[0] - 1:
                 cords = (self.matrix_dim[0] - 1, cords[1])
             if cords[1] > self.matrix_dim[1] - 1:
@@ -255,8 +257,9 @@ class Grid:
             return cords
         
         self.intercept_circles = []
-        self.target_cell = None
+        self.target_cell = []
         for i in range(len(self.avatar.rays)):
+           
             n = 0   #X Intercept Iterator
             m = 0   #Y Intercept Iterator
             avatar_cell_cord = get_cell_cord(self.avatar.world_pos)
@@ -269,7 +272,7 @@ class Grid:
             while True:
                 magnitude_x = abs(intercept_magnitude_x(offset[0], self.avatar.rays[i].direction, n * self.cell_size))
                 magnitude_y = abs(intercept_magnitude_y(offset[1], self.avatar.rays[i].direction, m * self.cell_size))
-
+                
                 #print((self.avatar.world_pos[0], self.avatar.world_pos[1]))
                 #print(f'Avatar In Cell {avatar_cell_cord} | Ray {i} | X&Y Intercepts {n * self.cell_size, m * self.cell_size} | X&Y Mags {magnitude_x, magnitude_y}')
                 #print(f'Avatar Direction {self.avatar.direction} Ray 0 Direction {self.avatar.rays[0].direction}')
@@ -288,7 +291,7 @@ class Grid:
 
                 #print(f'GRID CORD PAIRS : X ---> {x_cord_intercept, x_cord_grid}    Y ---> {y_cord_intercept, y_cord_grid}')
                 ##############################################################################
-                IntersectionDebug = True
+                IntersectionDebug = False
                 if IntersectionDebug == True:
                     self.intercept_circles.append(
                                             shapes.Circle(
@@ -305,12 +308,22 @@ class Grid:
                     m += 1
                 ###############################################################################
                 if IntersectionDebug == False:
-                    print(x_cord_grid)
+                    #print(x_cord_grid)
                     
+                    if self.avatar.rays[i].direction >= math.pi and self.avatar.rays[i].direction < 2 * math.pi:
+                        y_cord_offset = 1
+                    else:
+                        y_cord_offset = 0
+                    if self.avatar.rays[i].direction >= math.pi/2 and self.avatar.rays[i].direction < (2 * math.pi) - (math.pi/2):
+                        x_cord_offset = 1
+                    else:
+                        x_cord_offset = 0
+                    
+
                     if magnitude_y < magnitude_x:
-                            print('Y < X', magnitude_x, magnitude_y)
-                            if self.cell_arr[y_cord_grid[0]][y_cord_grid[1]].wall == True:
-                                print(f'CREATING CIRCLE {y_cord_grid, y_cord_intercept}')
+                            #print('Y < X', magnitude_x, magnitude_y)
+                            if self.cell_arr[y_cord_grid[0]][y_cord_grid[1] - y_cord_offset].wall == True:
+                                #print(f'CREATING CIRCLE {y_cord_grid, y_cord_intercept}')
                                 self.intercept_circles.append(
                                                 shapes.Circle(
                                                 y_cord_intercept[0] - self.avatar.rays[i].camera_offset[0],
@@ -318,10 +331,10 @@ class Grid:
                                                 6, 9, (0, 255, 0, 255), batch, foreground2))
                                 self.avatar.rays[i].set_magnitude(magnitude_y)
 
-                                self.target_cell = shapes.BorderedRectangle(y_cord_grid[0] * self.cell_size - self.avatar.rays[i].camera_offset[0], 
-                                                                            y_cord_grid[1] * self.cell_size - self.avatar.rays[i].camera_offset[1], 
+                                self.target_cell.append(shapes.BorderedRectangle(y_cord_grid[0] * self.cell_size - self.avatar.rays[i].camera_offset[0], 
+                                                                            (y_cord_grid[1] - y_cord_offset)  * self.cell_size - self.avatar.rays[i].camera_offset[1], 
                                                                             self.cell_size, self.cell_size, 1,
-                                                                            color = (100, 100, 200, 200), border_color = (255, 255, 255, 200), batch = batch, group = foreground)
+                                                                            color = (100, 100, 200, 80), border_color = (255, 255, 255, 80), batch = batch, group = foreground))
 
                                 break
                             else:
@@ -334,9 +347,9 @@ class Grid:
 
                 
                     if magnitude_x < magnitude_y:
-                        print('X < Y', magnitude_x, magnitude_y)
-                        if self.cell_arr[x_cord_grid[0]][x_cord_grid[1]].wall == True:
-                            print(f'CREATING CIRCLE {x_cord_grid, x_cord_intercept}')
+                        #print('X < Y', magnitude_x, magnitude_y)
+                        if self.cell_arr[x_cord_grid[0] - x_cord_offset][x_cord_grid[1]].wall == True:
+                            #print(f'CREATING CIRCLE {x_cord_grid, x_cord_intercept}')
                             self.intercept_circles.append(
                                             shapes.Circle(
                                             x_cord_intercept[0] - self.avatar.rays[i].camera_offset[0],
@@ -344,10 +357,10 @@ class Grid:
                                             6, 9, (255, 0, 0, 255), batch, foreground2))
                             self.avatar.rays[i].set_magnitude(magnitude_x)
 
-                            self.target_cell = shapes.BorderedRectangle(y_cord_grid[0] * self.cell_size - self.avatar.rays[i].camera_offset[0], 
-                                                                            y_cord_grid[1] * self.cell_size - self.avatar.rays[i].camera_offset[1], 
+                            self.target_cell.append(shapes.BorderedRectangle((x_cord_grid[0] - x_cord_offset) * self.cell_size - self.avatar.rays[i].camera_offset[0], 
+                                                                            x_cord_grid[1] * self.cell_size - self.avatar.rays[i].camera_offset[1], 
                                                                             self.cell_size, self.cell_size, 1,
-                                                                            color = (100, 100, 200, 200), border_color = (255, 255, 255, 200), batch = batch, group = foreground)
+                                                                            color = (100, 100, 200, 80), border_color = (255, 255, 255, 80), batch = batch, group = foreground))
 
 
                             break
@@ -362,9 +375,9 @@ class Grid:
                     
                     
                     elif magnitude_x == magnitude_y:
-                        print('X == Y', magnitude_x, magnitude_y)
+                        #print('X == Y', magnitude_x, magnitude_y)
                         if self.cell_arr[x_cord_grid[0]][x_cord_grid[1]].wall == True :
-                            print(f'CREATING CIRCLE {x_cord_grid, x_cord_intercept}')
+                            #print(f'CREATING CIRCLE {x_cord_grid, x_cord_intercept}')
                             self.intercept_circles.append(
                                             shapes.Circle(
                                             x_cord_intercept[0] - self.avatar.rays[i].camera_offset[0],
@@ -372,10 +385,10 @@ class Grid:
                                             6, 9, (0, 0, 255, 255), batch, foreground2))   
                             self.avatar.rays[i].set_magnitude(magnitude_x)
 
-                            self.target_cell = shapes.BorderedRectangle(y_cord_grid[0] * self.cell_size - self.avatar.rays[i].camera_offset[0], 
-                                                                            y_cord_grid[1] * self.cell_size - self.avatar.rays[i].camera_offset[1], 
+                            self.target_cell.append(shapes.BorderedRectangle(x_cord_grid[0] * self.cell_size - self.avatar.rays[i].camera_offset[0], 
+                                                                            x_cord_grid[1] * self.cell_size - self.avatar.rays[i].camera_offset[1], 
                                                                             self.cell_size, self.cell_size, 1,
-                                                                            color = (100, 100, 200, 200), border_color = (255, 255, 255, 200), batch = batch, group = foreground)
+                                                                            color = (100, 100, 200, 80), border_color = (255, 255, 255, 80), batch = batch, group = foreground))
 
 
                             break
