@@ -29,6 +29,10 @@ class Ray:
         
     def world_translation(self, delta_position: tuple = (0, 0), parent_direction: math.radians = 0):
         self.direction =  (self.direction_offset) - (parent_direction)
+        if self.direction >= math.pi * 2:
+            self.direction = self.direction - (math.pi * 2)
+        elif self.direction < 0:
+            self.direction = math.pi * 2 + self.direction
         self.origin = (self.origin[0] + delta_position[0], self.origin[1] + delta_position[1])
         self.direction_line.position = (self.origin[0], self.origin[1])
         self.direction_line.rotation = self.direction
@@ -69,7 +73,7 @@ class Avatar:
         self.direction_line = shapes.Line(self.world_pos[0], self.world_pos[1], (self.world_pos[0] + 60) * (math.cos(self.direction)), (self.world_pos[1] + 60) * (math.sin(self.direction)), 1, color = (255, 0, 0), batch = batch, group = foreground)
 
         self.rays = []
-        self.fov = math.radians(90)
+        self.fov = math.radians(60)
         self.ray_count = 0
         
         for x in range(self.ray_count):
@@ -79,12 +83,12 @@ class Avatar:
             ray_offset = ((x / self.ray_count) * (self.fov)) - (self.fov / 2)
             #ray_offset = math.radians(0)
             self.rays.append(Ray(self.world_pos, self.direction , ray_offset))
-            print(f'RAY {x} OFFSET {ray_offset} AND ORIGINAL DIRECTION {self.direction} FINAL {self.rays[x].direction}')
+            #print(f'RAY {x} OFFSET {ray_offset} AND ORIGINAL DIRECTION {self.direction} FINAL {self.rays[x].direction}')
         #ray_direction = (self.direction / 2) + ((1) * math.radians(self.fov)) + math.radians(self.fov / 2)
         ray_offset = 0#((1) * (self.fov)) - (self.fov / 2)
         self.rays.append(Ray(self.world_pos, self.direction , ray_offset))
         self.rays[self.ray_count].direction_line.color = (255,0,255,255)
-        print(f'RAY {self.ray_count} OFFSET {ray_offset} AND ORIGINAL DIRECTION {self.direction} FINAL {self.rays[self.ray_count].direction}')
+        #print(f'RAY {self.ray_count} OFFSET {ray_offset} AND ORIGINAL DIRECTION {self.direction} FINAL {self.rays[self.ray_count].direction}')
 
     def camera_translation(self, delta_position: tuple = (0, 0)):
         self.visual.position = (self.world_pos[0] - delta_position[0], self.world_pos[1] - delta_position[1])
@@ -200,20 +204,35 @@ class Grid:
             self.avatar.origin_rays()
 
     def ray_collisions(self):
+
         def intercept_magnitude_x(offset: float, angle: math.radians, intercept: int):
             try:
-                return (intercept - (offset % self.cell_size))/math.cos(angle)
+                if angle >= (2*math.pi) - math.pi/2 and angle < 2 * math.pi or angle >= 0 and angle < math.pi/2:
+                    return (intercept - (offset % self.cell_size))/math.cos(angle)
+                else:
+                    return (intercept - self.cell_size + (offset % self.cell_size))/math.cos(angle)
+
             except:
                 return self.matrix_dim[0] * self.cell_size + self.cell_size
         
         def intercept_magnitude_y(offset: float, angle: math.radians, intercept: int):
             try:
-                return (intercept - (offset % self.cell_size))/math.sin(angle)
+                if angle >= 0 and angle < math.pi:
+                    return (intercept - (offset % self.cell_size))/math.sin(angle)
+                else:
+                    return (intercept + (offset % self.cell_size))/math.sin(angle)
             except:
                 return self.matrix_dim[1] * self.cell_size + self.cell_size
             
-        def get_cell_cord(position: tuple):
+        def get_cell_cord(position: tuple, angle: math.radians = 0):
             cords = (math.floor(position[0]/ self.cell_size), math.floor(position[1] / self.cell_size))
+
+            #if angle >= math.pi and angle < 2 * math.pi:
+            #    cords = (cords[0], cords[0] - 1)
+
+            #if angle >= math.pi/2 and angle < (2 * math.pi) / 3:
+            #    cords = (cords[0] + 1, cords[0])
+
             if cords[0] > self.matrix_dim[0] - 1:
                 cords = (self.matrix_dim[0] - 1, cords[1])
             if cords[1] > self.matrix_dim[1] - 1:
@@ -222,88 +241,155 @@ class Grid:
                 cords = (0, cords[1])
             if cords[1] < 0:
                 cords = (cords[0], 0)
-            return cords
 
+            #if angle >= (2*math.pi) - math.pi/2 and angle < 2 * math.pi or angle >= 0 and angle < math.pi/2:
+            #    pass
+            #else:
+            #    cords = (cords[0], cords[1])
+            
+            ##if angle >= 0 and angle < math.pi:
+            #    pass
+            #else:
+            #    cords = (cords[0], cords[1])
+            
+            return cords
+        
+        self.intercept_circles = []
+        self.target_cell = None
         for i in range(len(self.avatar.rays)):
-            n = 1   #X Intercept Iterator
-            m = 1   #Y Intercept Iterator
+            n = 0   #X Intercept Iterator
+            m = 0   #Y Intercept Iterator
             avatar_cell_cord = get_cell_cord(self.avatar.world_pos)
             #camera_offset = self.avatar.visual.position
             self.track_circle = shapes.Circle(self.avatar.rays[0].origin[0] - self.avatar.rays[0].camera_offset[0],
                                                 self.avatar.rays[0].origin[1] - self.avatar.rays[0].camera_offset[1],
                                                 6, 9, (255, 0, 0, 255), batch, foreground2)
             offset = self.avatar.world_pos
-            self.intercept_circles = []
+            
             while True:
-                magnitude_x = intercept_magnitude_x(offset[0], self.avatar.rays[i].direction + math.pi, n * self.cell_size)
-                magnitude_y = intercept_magnitude_y(offset[1], self.avatar.rays[i].direction + math.pi, m * self.cell_size)
+                magnitude_x = abs(intercept_magnitude_x(offset[0], self.avatar.rays[i].direction, n * self.cell_size))
+                magnitude_y = abs(intercept_magnitude_y(offset[1], self.avatar.rays[i].direction, m * self.cell_size))
 
-                print((self.avatar.world_pos[0], self.avatar.world_pos[1]))
-                print(f'Avatar In Cell {avatar_cell_cord} | Ray {i} | X&Y Intercepts {n * self.cell_size, m * self.cell_size} | X&Y Mags {magnitude_x, magnitude_y}')
+                #print((self.avatar.world_pos[0], self.avatar.world_pos[1]))
+                #print(f'Avatar In Cell {avatar_cell_cord} | Ray {i} | X&Y Intercepts {n * self.cell_size, m * self.cell_size} | X&Y Mags {magnitude_x, magnitude_y}')
+                #print(f'Avatar Direction {self.avatar.direction} Ray 0 Direction {self.avatar.rays[0].direction}')
 
-                self.intercept_circles.append(
-                                         shapes.Circle(
-                                         offset[0] + magnitude_x * math.cos(self.avatar.rays[i].direction + math.pi) - self.avatar.rays[0].camera_offset[0],
-                                         offset[1] + magnitude_x * math.sin(self.avatar.rays[i].direction + math.pi) - self.avatar.rays[0].camera_offset[1],
-                                         6, 9, (255, 0, 0, 255), batch, foreground2))
                 
-                self.intercept_circles.append(
-                                         shapes.Circle(
-                                         offset[0] + magnitude_y * math.cos(self.avatar.rays[i].direction + math.pi) - self.avatar.rays[0].camera_offset[0],
-                                         offset[1] + magnitude_y * math.sin(self.avatar.rays[i].direction + math.pi) - self.avatar.rays[0].camera_offset[1],
-                                         6, 9, (0, 255, 0, 255), batch, foreground2))
+                
+                x_cord_intercept = (offset[0] + magnitude_x * math.cos(self.avatar.rays[i].direction), #- self.avatar.rays[i].camera_offset[0],
+                                    offset[1] + magnitude_x * math.sin(self.avatar.rays[i].direction)) #- self.avatar.rays[i].camera_offset[1])
 
+                y_cord_intercept = (offset[0] + magnitude_y * math.cos(self.avatar.rays[i].direction), #- self.avatar.rays[i].camera_offset[0],
+                                    offset[1] + magnitude_y * math.sin(self.avatar.rays[i].direction)) #- self.avatar.rays[i].camera_offset[1])
 
-                '''
-                if  magnitude_x < magnitude_y:
-                    cell = get_cell_cord((offset[0] + magnitude_x * math.cos(self.avatar.rays[i].direction) ,
-                                          offset[1] + magnitude_x * math.sin(self.avatar.rays[i].direction)))
+                x_cord_grid = get_cell_cord(x_cord_intercept, self.avatar.rays[i].direction)
+
+                y_cord_grid = get_cell_cord(y_cord_intercept, self.avatar.rays[i].direction)
+
+                #print(f'GRID CORD PAIRS : X ---> {x_cord_intercept, x_cord_grid}    Y ---> {y_cord_intercept, y_cord_grid}')
+                ##############################################################################
+                IntersectionDebug = True
+                if IntersectionDebug == True:
+                    self.intercept_circles.append(
+                                            shapes.Circle(
+                                            x_cord_intercept[0] - self.avatar.rays[i].camera_offset[0],
+                                            x_cord_intercept[1] - self.avatar.rays[i].camera_offset[1],
+                                            6, 9, (255, 0, 0, 255), batch, foreground2))
                     
-                    if self.cell_arr[cell[0]][cell[1]].wall == False:
-                                    n += 1
-                    else:
-                        print(f'X INT CELL POS {cell} Wall Detected {magnitude_x}')
-                        self.avatar.rays[i].set_magnitude(magnitude_x)
-                        self.intercept_circles.append(shapes.Circle( offset[0] + magnitude_x * math.cos(self.avatar.rays[i].direction),  
-                                                                     offset[1] + magnitude_x * math.sin(self.avatar.rays[i].direction), 
-                                                                    20, 12, (255, 255, 255, 255), batch, foreground2))
-                        break
-
-                elif magnitude_y < magnitude_x:
-                    cell = get_cell_cord((offset[0] + magnitude_y *math.cos(self.avatar.rays[i].direction) ,
-                                          offset[1] + magnitude_y *math.sin(self.avatar.rays[i].direction)))
-                    if self.cell_arr[cell[0]][cell[1]].wall == False:
-                                    m += 1
-                    else:
-                        print(f'Y INT CELL POS {cell} Wall Detected {magnitude_y}')
-                        self.avatar.rays[i].set_magnitude(magnitude_y)
-                        self.intercept_circles.append(shapes.Circle(240 + offset[0] + magnitude_y *math.cos(self.avatar.rays[i].direction),
-                                                                    240 + offset[1] + magnitude_y *math.sin(self.avatar.rays[i].direction), 
-                                                                    20, 12, (255, 255, 255, 255), batch, foreground2))
-                        break
+                    self.intercept_circles.append(
+                                            shapes.Circle(
+                                            y_cord_intercept[0] - self.avatar.rays[i].camera_offset[0],
+                                            y_cord_intercept[1] - self.avatar.rays[i].camera_offset[1],
+                                            6, 9, (0, 255, 0, 255), batch, foreground2))
+                    n += 1
+                    m += 1
+                ###############################################################################
+                if IntersectionDebug == False:
+                    print(x_cord_grid)
                     
-                elif magnitude_x == magnitude_y:
-                    cell = get_cell_cord((offset[0] + magnitude_y *math.cos(self.avatar.rays[i].direction) ,
-                                          offset[1] + magnitude_y *math.sin(self.avatar.rays[i].direction)))
-                    if self.cell_arr[cell[0]][cell[1]].wall == False:
-                                    m += 1
-                                    n += 1
-                    else:
-                        print(f'INT CELL POS {cell} Wall Detected {magnitude_y}')
-                        self.avatar.rays[i].set_magnitude(magnitude_x)
-                        self.intercept_circles.append(shapes.Circle(240 + offset[0] + magnitude_y *math.cos(self.avatar.rays[i].direction), 
-                                                                    240 + offset[1] + magnitude_y *math.sin(self.avatar.rays[i].direction), 
-                                                                    20, 12, (255, 255, 255, 255), batch, foreground2))
-                        break'''
-                m += 1
-                n += 1
+                    if magnitude_y < magnitude_x:
+                            print('Y < X', magnitude_x, magnitude_y)
+                            if self.cell_arr[y_cord_grid[0]][y_cord_grid[1]].wall == True:
+                                print(f'CREATING CIRCLE {y_cord_grid, y_cord_intercept}')
+                                self.intercept_circles.append(
+                                                shapes.Circle(
+                                                y_cord_intercept[0] - self.avatar.rays[i].camera_offset[0],
+                                                y_cord_intercept[1] - self.avatar.rays[i].camera_offset[1],
+                                                6, 9, (0, 255, 0, 255), batch, foreground2))
+                                self.avatar.rays[i].set_magnitude(magnitude_y)
+
+                                self.target_cell = shapes.BorderedRectangle(y_cord_grid[0] * self.cell_size - self.avatar.rays[i].camera_offset[0], 
+                                                                            y_cord_grid[1] * self.cell_size - self.avatar.rays[i].camera_offset[1], 
+                                                                            self.cell_size, self.cell_size, 1,
+                                                                            color = (100, 100, 200, 200), border_color = (255, 255, 255, 200), batch = batch, group = foreground)
+
+                                break
+                            else:
+                                #self.intercept_circles.append(
+                                #                shapes.Circle(
+                                #                y_cord_intercept[0] - self.avatar.rays[i].camera_offset[0],
+                                #                y_cord_intercept[1] - self.avatar.rays[i].camera_offset[1],
+                                #                6, 9, (0, 255, 0, 255), batch, foreground2))
+                                m += 1
+
+                
+                    if magnitude_x < magnitude_y:
+                        print('X < Y', magnitude_x, magnitude_y)
+                        if self.cell_arr[x_cord_grid[0]][x_cord_grid[1]].wall == True:
+                            print(f'CREATING CIRCLE {x_cord_grid, x_cord_intercept}')
+                            self.intercept_circles.append(
+                                            shapes.Circle(
+                                            x_cord_intercept[0] - self.avatar.rays[i].camera_offset[0],
+                                            x_cord_intercept[1] - self.avatar.rays[i].camera_offset[1],
+                                            6, 9, (255, 0, 0, 255), batch, foreground2))
+                            self.avatar.rays[i].set_magnitude(magnitude_x)
+
+                            self.target_cell = shapes.BorderedRectangle(y_cord_grid[0] * self.cell_size - self.avatar.rays[i].camera_offset[0], 
+                                                                            y_cord_grid[1] * self.cell_size - self.avatar.rays[i].camera_offset[1], 
+                                                                            self.cell_size, self.cell_size, 1,
+                                                                            color = (100, 100, 200, 200), border_color = (255, 255, 255, 200), batch = batch, group = foreground)
+
+
+                            break
+                        else:
+                            #self.intercept_circles.append(
+                            #                    shapes.Circle(
+                            #                    y_cord_intercept[0] - self.avatar.rays[i].camera_offset[0],
+                            #                    y_cord_intercept[1] - self.avatar.rays[i].camera_offset[1],
+                            #                    6, 9, (255, 0, 0, 255), batch, foreground2))
+                            n += 1
+
+                    
+                    
+                    elif magnitude_x == magnitude_y:
+                        print('X == Y', magnitude_x, magnitude_y)
+                        if self.cell_arr[x_cord_grid[0]][x_cord_grid[1]].wall == True :
+                            print(f'CREATING CIRCLE {x_cord_grid, x_cord_intercept}')
+                            self.intercept_circles.append(
+                                            shapes.Circle(
+                                            x_cord_intercept[0] - self.avatar.rays[i].camera_offset[0],
+                                            x_cord_intercept[1] - self.avatar.rays[i].camera_offset[1],
+                                            6, 9, (0, 0, 255, 255), batch, foreground2))   
+                            self.avatar.rays[i].set_magnitude(magnitude_x)
+
+                            self.target_cell = shapes.BorderedRectangle(y_cord_grid[0] * self.cell_size - self.avatar.rays[i].camera_offset[0], 
+                                                                            y_cord_grid[1] * self.cell_size - self.avatar.rays[i].camera_offset[1], 
+                                                                            self.cell_size, self.cell_size, 1,
+                                                                            color = (100, 100, 200, 200), border_color = (255, 255, 255, 200), batch = batch, group = foreground)
+
+
+                            break
+                        else:
+                            #self.intercept_circles.append(
+                            #                    shapes.Circle(
+                            #                    y_cord_intercept[0] - self.avatar.rays[i].camera_offset[0],
+                            #                    y_cord_intercept[1] - self.avatar.rays[i].camera_offset[1],
+                            #                    6, 9, (0, 0, 255, 255), batch, foreground2))
+                            n += 1
+                            m += 1
+
                 if m >= self.matrix_dim[1] or n >= self.matrix_dim[0]:
-                    #if magnitude_x < magnitude_y:
-                    #self.avatar.rays[i].set_magnitude(self.avatar.rays[i].magnitude + 1)    #WORKS
-                    #else:
-                    #self.avatar.rays[i].set_magnitude(magnitude_y)                          #DOES NOT WORK! WHY >:(
                     self.avatar.rays[i].set_magnitude(magnitude_x)
-                    print(f'FOREVER LOOP DONE {n , m}')
                     break
 
 class World:
@@ -318,8 +404,8 @@ class World:
 
 if __name__ == '__main__':
 
-    width = 720
-    height = 720
+    width = 600
+    height = 600
 
     win_overhead = Window(width, height, 'Overhead')
     keys_pressed = key.KeyStateHandler()
