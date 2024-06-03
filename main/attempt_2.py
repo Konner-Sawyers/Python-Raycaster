@@ -74,7 +74,7 @@ class Avatar:
 
         self.rays = []
         self.fov = math.radians(60)
-        self.ray_count = 12
+        self.ray_count = 480
         
         for x in range(self.ray_count):
             #ray_direction = ((x / self.ray_count) * math.radians(self.fov)) + self.direction - (math.radians(self.fov) / 2)
@@ -85,7 +85,7 @@ class Avatar:
             self.rays.append(Ray(self.world_pos, self.direction , ray_offset))
             #print(f'RAY {x} OFFSET {ray_offset} AND ORIGINAL DIRECTION {self.direction} FINAL {self.rays[x].direction}')
         #ray_direction = (self.direction / 2) + ((1) * math.radians(self.fov)) + math.radians(self.fov / 2)
-        ray_offset = 0#((1) * (self.fov)) - (self.fov / 2)
+        ray_offset = ((1) * (self.fov)) - (self.fov / 2)
         self.rays.append(Ray(self.world_pos, self.direction , ray_offset))
         self.rays[self.ray_count].direction_line.color = (255,0,255,255)
         #print(f'RAY {self.ray_count} OFFSET {ray_offset} AND ORIGINAL DIRECTION {self.direction} FINAL {self.rays[self.ray_count].direction}')
@@ -226,15 +226,7 @@ class Grid:
             
         def get_cell_cord(position: tuple, angle: math.radians = None):
             cords = (math.floor(position[0]/ self.cell_size), math.floor(position[1] / self.cell_size))
-            #if angle is None:
-            #    pass
-            #else:
-                #if angle >= math.pi and angle < 2 * math.pi:
-                #    cords = (cords[0], cords[1] - 1)
 
-                #if angle >= math.pi/2 and angle < (2 * math.pi) / 3:
-                #    cords = (cords[0] , cords[1])
-                #pass
             if cords[0] > self.matrix_dim[0] - 1:
                 cords = (self.matrix_dim[0] - 1, cords[1])
             if cords[1] > self.matrix_dim[1] - 1:
@@ -244,24 +236,15 @@ class Grid:
             if cords[1] < 0:
                 cords = (cords[0], 0)
 
-            #if angle >= (2*math.pi) - math.pi/2 and angle < 2 * math.pi or angle >= 0 and angle < math.pi/2:
-            #    pass
-            #else:
-            #    cords = (cords[0], cords[1])
-            
-            ##if angle >= 0 and angle < math.pi:
-            #    pass
-            #else:
-            #    cords = (cords[0], cords[1])
-            
             return cords
         
         self.intercept_circles = []
         self.target_cell = []
+        self.wall_lines = []
         for i in range(len(self.avatar.rays)):
            
-            n = 0   #X Intercept Iterator
-            m = 0   #Y Intercept Iterator
+            n = 1   #X Intercept Iterator
+            m = 1   #Y Intercept Iterator
             avatar_cell_cord = get_cell_cord(self.avatar.world_pos)
             #camera_offset = self.avatar.visual.position
             self.track_circle = shapes.Circle(self.avatar.rays[0].origin[0] - self.avatar.rays[0].camera_offset[0],
@@ -289,7 +272,7 @@ class Grid:
 
                 y_cord_grid = get_cell_cord(y_cord_intercept, self.avatar.rays[i].direction)
 
-                #print(f'GRID CORD PAIRS : X ---> {x_cord_intercept, x_cord_grid}    Y ---> {y_cord_intercept, y_cord_grid}')
+                #print(f'GRID CORD PAIRS`1  ` : X ---> {x_cord_intercept, x_cord_grid}    Y ---> {y_cord_intercept, y_cord_grid}')
                 ##############################################################################
                 IntersectionDebug = False
                 if IntersectionDebug == True:
@@ -331,6 +314,8 @@ class Grid:
                                                 6, 9, (0, 255, 0, 255), batch, foreground2))
                                 self.avatar.rays[i].set_magnitude(magnitude_y)
 
+                                self.wall_lines.append(shapes.Rectangle(600 - (i * (600/len(self.avatar.rays))), (600 - 60000/magnitude_y) / 2, 600/len(self.avatar.rays), 60000/magnitude_y, (100,100,255,255), walls_batch))
+
                                 self.target_cell.append(shapes.BorderedRectangle(y_cord_grid[0] * self.cell_size - self.avatar.rays[i].camera_offset[0], 
                                                                             (y_cord_grid[1] - y_cord_offset)  * self.cell_size - self.avatar.rays[i].camera_offset[1], 
                                                                             self.cell_size, self.cell_size, 1,
@@ -356,6 +341,8 @@ class Grid:
                                             x_cord_intercept[1] - self.avatar.rays[i].camera_offset[1],
                                             6, 9, (255, 0, 0, 255), batch, foreground2))
                             self.avatar.rays[i].set_magnitude(magnitude_x)
+
+                            self.wall_lines.append(shapes.Rectangle(600 - (i * (600/len(self.avatar.rays))), (600 - 60000/magnitude_x) / 2, 600/len(self.avatar.rays), 60000/magnitude_x, (50,50,255,255), walls_batch))
 
                             self.target_cell.append(shapes.BorderedRectangle((x_cord_grid[0] - x_cord_offset) * self.cell_size - self.avatar.rays[i].camera_offset[0], 
                                                                             x_cord_grid[1] * self.cell_size - self.avatar.rays[i].camera_offset[1], 
@@ -420,11 +407,15 @@ if __name__ == '__main__':
     width = 600
     height = 600
 
+
     win_overhead = Window(width, height, 'Overhead')
+    
+
     keys_pressed = key.KeyStateHandler()
     win_overhead.push_handlers(keys_pressed)
 
     batch = graphics.Batch()
+
     background = graphics.Group(order = 0)
     foreground = graphics.Group(order = 1)
     foreground2 = graphics.Group(order = 2)
@@ -435,6 +426,9 @@ if __name__ == '__main__':
     virt_world = World(test_grid)
 
     move_speed = 4
+
+    
+
 
     label_camera_pos = Label('Camera Position',
                             font_name='Times New Roman',
@@ -504,6 +498,15 @@ if __name__ == '__main__':
         dx = dx * 5
         return((dy, dx), dr)
 
+    
+    #win_view = Window(width, height, 'First Person')
+    walls_batch = graphics.Batch()
+
+    #@win_view.event
+    #def on_draw():
+    #    win_view.clear()
+    #    #walls_batch.draw()
+
     @win_overhead.event
     def on_mouse_motion(x, y, dx, dy):
         label_mouse_pos.text = f'Mouse Screen Position: {(x, y)}'
@@ -535,7 +538,12 @@ if __name__ == '__main__':
         virt_world.map.ray_collisions()
         virt_world.map.camera_translation((world_camera.world_pos[0] - width / 2, world_camera.world_pos[1] - height / 2))
 
-        Window.clear()
-        batch.draw()
+        win_overhead.clear()
+        #batch.draw()
+        walls_batch.draw()
+
+
+        
+    
 
     app.run(1/60)
