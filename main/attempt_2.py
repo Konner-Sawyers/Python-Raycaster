@@ -74,7 +74,7 @@ class Avatar:
 
         self.rays = []
         self.fov = math.radians(60)
-        self.ray_count = 480
+        self.ray_count = 72
         
         for x in range(self.ray_count):
             #ray_direction = ((x / self.ray_count) * math.radians(self.fov)) + self.direction - (math.radians(self.fov) / 2)
@@ -539,8 +539,8 @@ if __name__ == '__main__':
         virt_world.map.camera_translation((world_camera.world_pos[0] - width / 2, world_camera.world_pos[1] - height / 2))
 
         win_overhead.clear()
-        #batch.draw()
-        walls_batch.draw()
+        batch.draw()
+        #walls_batch.draw()
 
 
         
