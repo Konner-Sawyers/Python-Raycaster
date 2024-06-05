@@ -60,11 +60,14 @@ def raycast(cell_list, position: np.array, direction: math.radians, scalar: int,
         def y_mag(y: float, angle: math.radians):
             return abs(y) / math.sin(angle)
 
-        print(direction)
+        print(direction/math.pi)
 
         intersections = []
         timeout_max = 12
         timeout = 0
+        
+        #print((2 * math.pi) - (math.pi / 2))
+
         #Up and Right
         if direction >= (2 * math.pi) - (math.pi/2) and direction < (2 * math.pi):
             offset_x = 1 - ((position[0]/scalar) % 1)
@@ -102,7 +105,7 @@ def raycast(cell_list, position: np.array, direction: math.radians, scalar: int,
                     
 
                 
-                print(f'New offset y {offset_y}')
+                #print(f'New offset y {offset_y}')
 
                 
                 #elif magnitudes[1] > magnitudes[0]:
@@ -113,46 +116,49 @@ def raycast(cell_list, position: np.array, direction: math.radians, scalar: int,
                     return intersections
                 
         
-
-        if direction >= (math.pi) and direction < ((2 * math.pi) / (math.pi / 2)):
+        #Up and Left
+        elif direction >= (math.pi) and direction < ((2 * math.pi) - (math.pi / 2)):
             offset_x = (1 - ((position[0]/scalar) % 1)) - 1
             offset_y = 1 - ((position[1]/scalar) % 1)
             while True:
                 magnitudes = [x_mag(offset_x, direction), y_mag(offset_y, direction)]
+                #print(abs(magnitudes[0]), abs(magnitudes[1]))
                 calc_y = magnitudes[0] * -math.sin(direction)
                 calc_x = magnitudes[1] * -math.cos(direction)
                 
                 x_intercept_coordinates = np.array([round(scalar * calc_x + avatar.position[0], 3), round(scalar * offset_y + avatar.position[1], 3)])
-                y_intercept_coordinates = np.array([round(scalar * offset_x + avatar.position[0], 3), round(scalar * calc_y - avatar.position[1], 3)])
+                y_intercept_coordinates = np.array([round(scalar * offset_x + avatar.position[0], 3), round(scalar * calc_y + avatar.position[1], 3)])
 
                 x_intercept_coordinates_normal = np.array([math.floor(x_intercept_coordinates[0]/scalar), math.floor(x_intercept_coordinates[1]/scalar)])
-                y_intercept_coordinates_noraml = np.array([math.floor(y_intercept_coordinates[0]/scalar), math.floor(y_intercept_coordinates[1]/scalar)])
+                y_intercept_coordinates_noraml = np.array([(math.floor(y_intercept_coordinates[0]/scalar - 1)), (math.floor(y_intercept_coordinates[1]/scalar))])
                 
-                intersections.append(shapes.Circle(scalar * calc_x + window_width/2, scalar * offset_y + window_height/2, 7, 12, (255, 0, 0, 255), batch, foreground)) #Needs to be locked to the x-axis
-                intersections.append(shapes.Circle(scalar * offset_x + window_width/2, scalar * calc_y + window_height/2, 7, 12, (0, 0, 255, 255), batch, foreground))  #Needs to be locked to the y-axis
+                
+                #intersections.append(shapes.Circle(scalar * calc_x + window_width/2, scalar * offset_y + window_height/2, 7, 12, (255, 0, 0, 255), batch, foreground)) #Needs to be locked to the x-axis
+                #intersections.append(shapes.Circle(scalar * offset_x + window_width/2, scalar * calc_y + window_height/2, 7, 12, (0, 0, 255, 255), batch, foreground))  #Needs to be locked to the y-axis
 
-                '''if magnitudes[0] < magnitudes[1]:
+                if magnitudes[0] > abs(magnitudes[1]):
                     for i in range(len(cell_list)):
                         if np.array_equal(cell_list[i].position, x_intercept_coordinates_normal):
                             intersections.append(shapes.Circle(scalar * calc_x + window_width/2, scalar * offset_y + window_height/2, 7, 12, (255, 255, 0, 255), batch, foreground)) #Needs to be locked to the x-axis
-                            print(f'RED:    {x_intercept_coordinates}  BLUE:   {y_intercept_coordinates}')
+                            #print(f'RED:    {x_intercept_coordinates}  BLUE:   {y_intercept_coordinates}')
                             return (intersections)
                     offset_y += 1
                 
-                elif magnitudes[1] < magnitudes[0]:
+                elif abs(magnitudes[1]) > magnitudes[0]:
                     for i in range(len(cell_list)):
                         if np.array_equal(cell_list[i].position, y_intercept_coordinates_noraml):
+                            #print(y_intercept_coordinates_noraml)
                             intersections.append(shapes.Circle(scalar * offset_x + window_width/2, scalar * calc_y + window_height/2, 7, 12, (255, 0, 255, 255), batch, foreground))
-                            print(f'RED:    {x_intercept_coordinates}  BLUE:   {y_intercept_coordinates}')
+                            #print(f'RED:    {x_intercept_coordinates}  BLUE:   {y_intercept_coordinates}')
                             return (intersections)
-                    offset_x += 1'''
+                    offset_x -= 1
                 #for i in range(len(cell_list)):
                     
-                offset_x += -1
-                offset_y += 1
+                #offset_x += -1
+                #offset_y += 1
 
                 
-                print(f'New offset y {offset_y}')
+                #print(f'New offset y {offset_y}')
 
                 
                 #elif magnitudes[1] > magnitudes[0]:
@@ -162,6 +168,72 @@ def raycast(cell_list, position: np.array, direction: math.radians, scalar: int,
                 if timeout == timeout_max:
                     return intersections
 
+        #Down and Right
+        elif direction >= (0) and direction < ((math.pi / 2)):
+            offset_x = (1 - ((position[0]/scalar) % 1)) - 1
+            offset_y = 1 - ((position[1]/scalar) % 1)
+            while True:
+                magnitudes = [x_mag(offset_x, direction), y_mag(offset_y, direction)]
+                #print(abs(magnitudes[0]), abs(magnitudes[1]))
+                calc_y = magnitudes[0] * -math.sin(direction)
+                calc_x = magnitudes[1] * -math.cos(direction)
+                
+                if math.isinf(calc_x):
+                    if calc_x < 0:
+                        calc_x = -999999
+                    else:
+                        calc_x = 999999
+
+
+                x_intercept_coordinates = np.array([round(scalar * calc_x + avatar.position[0], 3), round(scalar * offset_y + avatar.position[1], 3)])
+                y_intercept_coordinates = np.array([round(scalar * offset_x + avatar.position[0], 3), round(scalar * calc_y + avatar.position[1], 3)])
+
+
+                print(calc_x)
+                #print(math.floor(round(scalar * calc_x + avatar.position[0], 3)/scalar - 1))
+                #print(x_intercept_coordinates)
+
+                x_intercept_coordinates_normal = np.array([math.floor(x_intercept_coordinates[0]/scalar - 1), math.floor(x_intercept_coordinates[1]/scalar)])
+                y_intercept_coordinates_noraml = np.array([(math.floor(y_intercept_coordinates[0]/scalar )), (math.floor(y_intercept_coordinates[1]/scalar))])
+                
+                
+                intersections.append(shapes.Circle(scalar * calc_x + window_width/2, scalar * offset_y + window_height/2, 7, 12, (255, 0, 0, 255), batch, foreground)) #Needs to be locked to the x-axis
+                intersections.append(shapes.Circle(scalar * offset_x + window_width/2, scalar * calc_y + window_height/2, 7, 12, (0, 0, 255, 255), batch, foreground))  #Needs to be locked to the y-axis
+
+                #if magnitudes[0] > abs(magnitudes[1]):
+                #    for i in range(len(cell_list)):
+                #        if np.array_equal(cell_list[i].position, x_intercept_coordinates_normal):
+                #            intersections.append(shapes.Circle(scalar * calc_x + window_width/2, scalar * offset_y + window_height/2, 7, 12, (255, 255, 0, 255), batch, foreground)) #Needs to be locked to the x-axis
+                #            #print(f'RED:    {x_intercept_coordinates}  BLUE:   {y_intercept_coordinates}')
+                #            return (intersections)
+                #    offset_y += 1
+                
+                #elif abs(magnitudes[1]) > magnitudes[0]:
+                #    for i in range(len(cell_list)):
+                #        if np.array_equal(cell_list[i].position, y_intercept_coordinates_noraml):
+                #            #print(y_intercept_coordinates_noraml)
+                #            intersections.append(shapes.Circle(scalar * offset_x + window_width/2, scalar * calc_y + window_height/2, 7, 12, (255, 0, 255, 255), batch, foreground))
+                #            #print(f'RED:    {x_intercept_coordinates}  BLUE:   {y_intercept_coordinates}')
+                #            return (intersections)
+                #    offset_x -= 1
+                #for i in range(len(cell_list)):
+                    
+                offset_x += -1
+                offset_y += 1
+
+                
+                #print(f'New offset y {offset_y}')
+
+                
+                #elif magnitudes[1] > magnitudes[0]:
+
+
+                timeout += 1
+                if timeout == timeout_max:
+                    return intersections
+
+
+        #Down and Left
                 
             
 
@@ -178,8 +250,8 @@ if __name__ == '__main__':
     init = False
     
     if init == False:
-        window_width = 480
-        window_height = 360
+        window_width = 640  
+        window_height = 480
         window_1 = Window(window_width, window_height, 'Main Window')
 
         #GRID CELL SIZE SCALING VALUE
@@ -207,6 +279,7 @@ if __name__ == '__main__':
         cell_list.append(Cell(np.array([3,1])))
         cell_list.append(Cell(np.array([3,2])))
         cell_list.append(Cell(np.array([2,2])))
+        cell_list.append(Cell(np.array([-2,-2])))
 
         for i in range(len(cell_list)):
             world_pos = cell_list[i].world_position(overhead_scaling)
@@ -261,9 +334,9 @@ if __name__ == '__main__':
         #print(f'Position: {avatar.position} Direction: {avatar.direction}')
 
 
-        #for x in range(270, 360, 5):
+        #for x in range(180, 360, 5):
         #    ray_circle.append(raycast(cell_list, avatar.position, math.radians(x), overhead_scaling, window_width, window_height))
-            #print(x)
+        #    #print(x)
         ray_circle.append(raycast(cell_list, avatar.position, avatar.direction, overhead_scaling, window_width, window_height))
 
         """
