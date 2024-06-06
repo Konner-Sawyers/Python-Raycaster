@@ -1,3 +1,13 @@
+#
+# TODO
+#
+# For the case of magnitudes being equivalent
+#
+#
+#
+#
+
+
 import pyglet
 import math
 from pyglet import shapes
@@ -41,18 +51,22 @@ class Avatar:
             self.direction -= (2 * math.pi)
         return
     
-    def move(self, strafe_direction: Relative_Direction):
+    def move(self, strafe_direction: Relative_Direction, current_direction: math.radians):
         if strafe_direction == Relative_Direction.FORWARD:
-            self.position[1] += 5
+            self.position[0] += 5 * math.cos(current_direction)
+            self.position[1] -= 5 * math.sin(current_direction)
 
         if strafe_direction == Relative_Direction.BACK:
-            self.position[1] -= 5
+            self.position[0] += 5 * math.cos(current_direction + math.pi)
+            self.position[1] -= 5 * math.sin(current_direction + math.pi)
 
         if strafe_direction == Relative_Direction.LEFT:
-            self.position[0] -= 5
+            self.position[0] += 5 * math.cos(current_direction - (math.pi/2))
+            self.position[1] += 5 * math.sin(current_direction + (math.pi/2))
 
         if strafe_direction == Relative_Direction.RIGHT:
-            self.position[0] += 5
+            self.position[0] += 5 * math.cos(current_direction + (math.pi/2))
+            self.position[1] += 5 * math.sin(current_direction - (math.pi/2))
 
 def raycast(cell_list, position: np.array, direction: math.radians, scalar: int, window_width, window_height, fov: int) -> np.array:
         def x_mag(x: float, angle: math.radians):
@@ -69,13 +83,17 @@ def raycast(cell_list, position: np.array, direction: math.radians, scalar: int,
         #        window_width * ((ray_direction)/fov), ((window_height - (window_height/magnitude)) / 2), window_width * 1/fov, window_height/magnitude, (185, 185, 0, 255), batch = walls_batch, group = foreground
         #    ))
 
+        if direction < 0:
+            direction = direction + (2 * math.pi)
+        elif direction >= (2 * math.pi):
+            direction = direction - (2 * math.pi)
 
         intersections = []
-        timeout_max = 8
+        timeout_max = 12
         timeout = 0
         
         
-        #Up and Right
+        #Up and Right #PROBLEM AREA
         if direction >= (2 * math.pi) - (math.pi/2) and direction < (2 * math.pi):
             offset_x = 1 - ((position[0]/scalar) % 1)
             offset_y = 1 - ((position[1]/scalar) % 1)
@@ -93,24 +111,24 @@ def raycast(cell_list, position: np.array, direction: math.radians, scalar: int,
                 #intersections.append(shapes.Circle(scalar * calc_x + window_width/2, scalar * offset_y + window_height/2, 7, 12, (255, 0, 0, 255), batch, foreground)) #Needs to be locked to the x-axis
                 #intersections.append(shapes.Circle(scalar * offset_x + window_width/2, scalar * calc_y + window_height/2, 7, 12, (0, 0, 255, 255), batch, foreground))  #Needs to be locked to the y-axis
 
-                if magnitudes[0] < magnitudes[1]:
+                if magnitudes[0] <= magnitudes[1]:
                     for i in range(len(cell_list)):
                         if np.array_equal(cell_list[i].position, x_intercept_coordinates_normal):
-                            #intersections.append(shapes.Circle(scalar * calc_x + window_width/2, scalar * offset_y + window_height/2, 7, 12, (255, 255, 0, 255), batch, foreground)) #Needs to be locked to the x-axis
+                            circle = (shapes.Circle(scalar * calc_x + window_width/2, scalar * offset_y + window_height/2, 7, 12, (255, 255, 0, 255), batch, foreground)) #Needs to be locked to the x-axis
                             #print(f'RED:    {x_intercept_coordinates}  BLUE:   {y_intercept_coordinates}')
                             #intersections.append(create_vertical_slice(walls, direction, magnitudes[0], fov, window_width, window_height))
                             #return (intersections)
-                            return({'magnitude': abs(magnitudes[1]), 'color': (255,255,0,255)})
+                            return({'magnitude': abs(magnitudes[1]), 'color': (255,255,0,255), 'circle': circle, 'angle': direction})
                     offset_y += 1
                 
                 elif magnitudes[1] < magnitudes[0]:
                     for i in range(len(cell_list)):
                         if np.array_equal(cell_list[i].position, y_intercept_coordinates_noraml):
-                            #intersections.append(shapes.Circle(scalar * offset_x + window_width/2, scalar * calc_y + window_height/2, 7, 12, (255, 0, 255, 255), batch, foreground))
+                            circle = (shapes.Circle(scalar * offset_x + window_width/2, scalar * calc_y + window_height/2, 7, 12, (255, 0, 255, 255), batch, foreground))
                             #print(f'RED:    {x_intercept_coordinates}  BLUE:   {y_intercept_coordinates}')
                             #intersections.append(create_vertical_slice(walls, direction, magnitudes[1], fov, window_width, window_height))
                             #return (intersections)
-                            return({'magnitude': abs(magnitudes[0]), 'color': (255,255,0,255)})
+                            return({'magnitude': abs(magnitudes[0]), 'color': (255,100,0,255), 'circle': circle, 'angle': direction })
                     offset_x += 1
 
                 timeout += 1
@@ -137,22 +155,22 @@ def raycast(cell_list, position: np.array, direction: math.radians, scalar: int,
                 if magnitudes[0] > abs(magnitudes[1]):
                     for i in range(len(cell_list)):
                         if np.array_equal(cell_list[i].position, x_intercept_coordinates_normal):
-                            #intersections.append(shapes.Circle(scalar * calc_x + window_width/2, scalar * offset_y + window_height/2, 7, 12, (255, 255, 0, 255), batch, foreground)) #Needs to be locked to the x-axis
+                            circle = (shapes.Circle(scalar * calc_x + window_width/2, scalar * offset_y + window_height/2, 7, 12, (255, 255, 0, 255), batch, foreground)) #Needs to be locked to the x-axis
                             #print(f'RED:    {x_intercept_coordinates}  BLUE:   {y_intercept_coordinates}')
                             #intersections.append(create_vertical_slice(walls, direction, abs(magnitudes[1]), fov, window_width, window_height))
                             #return (intersections)
-                            return({'magnitude': abs(magnitudes[1]), 'color': (255,255,0,255)})
+                            return({'magnitude': abs(magnitudes[1]), 'color': (255,255,0,255), 'circle': circle, 'angle': direction})
                     offset_y += 1
                 
-                elif abs(magnitudes[1]) > magnitudes[0]:
+                elif abs(magnitudes[1]) >= magnitudes[0]:
                     for i in range(len(cell_list)):
                         if np.array_equal(cell_list[i].position, y_intercept_coordinates_noraml):
                             #print(y_intercept_coordinates_noraml)
-                            #intersections.append(shapes.Circle(scalar * offset_x + window_width/2, scalar * calc_y + window_height/2, 7, 12, (255, 0, 255, 255), batch, foreground))
+                            circle = (shapes.Circle(scalar * offset_x + window_width/2, scalar * calc_y + window_height/2, 7, 12, (255, 0, 255, 255), batch, foreground))
                             #print(f'RED:    {x_intercept_coordinates}  BLUE:   {y_intercept_coordinates}')
                             #intersections.append(create_vertical_slice(walls, direction, magnitudes[0], fov, window_width, window_height))
                             #return (intersections)
-                            return({'magnitude': abs(magnitudes[0]), 'color': (255,255,0,255)})
+                            return({'magnitude': abs(magnitudes[0]), 'color': (255,100,0,255), 'circle': circle, 'angle': direction})
                     offset_x -= 1
                 timeout += 1
                 if timeout == timeout_max:
@@ -181,24 +199,24 @@ def raycast(cell_list, position: np.array, direction: math.radians, scalar: int,
                 x_intercept_coordinates_normal = np.array([math.floor(x_intercept_coordinates[0]/scalar), math.floor(x_intercept_coordinates[1]/scalar - 1)])
                 y_intercept_coordinates_noraml = np.array([(math.floor(y_intercept_coordinates[0]/scalar)), (math.floor(y_intercept_coordinates[1]/scalar))])
  
-                if abs(magnitudes[0]) > magnitudes[1]:
+                if abs(magnitudes[0]) >= magnitudes[1]:
                     for i in range(len(cell_list)):
                         if np.array_equal(cell_list[i].position, x_intercept_coordinates_normal):
-                            #intersections.append(shapes.Circle(scalar * calc_x + window_width/2, scalar * offset_y + window_height/2, 7, 12, (255, 255, 0, 255), batch, foreground)) #Needs to be locked to the x-axis
+                            circle = (shapes.Circle(scalar * calc_x + window_width/2, scalar * offset_y + window_height/2, 7, 12, (255, 255, 0, 255), batch, foreground)) #Needs to be locked to the x-axis
                             #print(f'RED:    {x_intercept_coordinates}  BLUE:   {y_intercept_coordinates}')
                             #intersections.append(create_vertical_slice(walls, direction, magnitudes[1], fov, window_width, window_height))
                             #return (intersections)
-                            return({'magnitude': abs(magnitudes[1]), 'color': (255,255,0,255)})
+                            return({'magnitude': abs(magnitudes[1]), 'color': (255,255,0,255), 'circle': circle, 'angle': direction})
                     offset_y -= 1
                 
                 elif magnitudes[1] > abs(magnitudes[0]):
                     for i in range(len(cell_list)):
                         if np.array_equal(cell_list[i].position, y_intercept_coordinates_noraml):
-                            #intersections.append(shapes.Circle(scalar * offset_x + window_width/2, scalar * calc_y + window_height/2, 7, 12, (255, 0, 255, 255), batch, foreground))
+                            circle = (shapes.Circle(scalar * offset_x + window_width/2, scalar * calc_y + window_height/2, 7, 12, (255, 0, 255, 255), batch, foreground))
                             #print(f'RED:    {x_intercept_coordinates, x_intercept_coordinates_normal}  BLUE:   {y_intercept_coordinates, y_intercept_coordinates_noraml}')
                             #intersections.append(create_vertical_slice(walls, direction, abs(magnitudes[0]), fov, window_width, window_height))
                             #return (intersections)
-                            return({'magnitude': abs(magnitudes[0]), 'color': (255,255,0,255)})
+                            return({'magnitude': abs(magnitudes[0]), 'color': (255,100,0,255), 'circle': circle, 'angle': direction})
                     offset_x += 1
                 timeout += 1
                 if timeout == timeout_max:
@@ -233,26 +251,27 @@ def raycast(cell_list, position: np.array, direction: math.radians, scalar: int,
                 if abs(magnitudes[0]) > magnitudes[1]:
                     for i in range(len(cell_list)):
                         if np.array_equal(cell_list[i].position, x_intercept_coordinates_normal):
-                            #intersections.append(shapes.Circle(scalar * calc_x + window_width/2, scalar * offset_y + window_height/2, 7, 12, (255, 255, 0, 255), batch, foreground)) #Needs to be locked to the x-axis
+                            circle = (shapes.Circle(scalar * calc_x + window_width/2, scalar * offset_y + window_height/2, 7, 12, (255, 255, 0, 255), batch, foreground)) #Needs to be locked to the x-axis
                             #print(f'RED:    {x_intercept_coordinates}  BLUE:   {y_intercept_coordinates}')
                             #intersections.append(create_vertical_slice(walls, direction, magnitudes[0], fov, window_width, window_height))
                             #return (intersections)
-                            return({'magnitude': abs(magnitudes[1]), 'color': (255,255,0,255)})
+                            return({'magnitude': abs(magnitudes[1]), 'color': (255,255,0,255), 'circle': circle, 'angle': direction})
                     offset_y -= 1
                 
-                elif magnitudes[1] > abs(magnitudes[0]):
+                elif magnitudes[1] >= abs(magnitudes[0]):
                     for i in range(len(cell_list)):
                         if np.array_equal(cell_list[i].position, y_intercept_coordinates_noraml):
-                            #intersections.append(shapes.Circle(scalar * offset_x + window_width/2, scalar * calc_y + window_height/2, 7, 12, (255, 0, 255, 255), batch, foreground))
+                            circle = (shapes.Circle(scalar * offset_x + window_width/2, scalar * calc_y + window_height/2, 7, 12, (255, 0, 255, 255), batch, foreground))
                             #print(f'RED:    {x_intercept_coordinates, x_intercept_coordinates_normal}  BLUE:   {y_intercept_coordinates, y_intercept_coordinates_noraml}')
                             #intersections.append(create_vertical_slice(walls, direction, magnitudes[0], fov, window_width, window_height))
                             #return (intersections)
-                            return({'magnitude': abs(magnitudes[0]), 'color': (255,255,0,255)})
+                            return({'magnitude': abs(magnitudes[0]), 'color': (255,100,0,255), 'circle': circle, 'angle': direction})
                     offset_x -= 1
 
                 timeout += 1
                 if timeout == timeout_max:
                     return 0
+
 
         
             
@@ -266,7 +285,7 @@ if __name__ == '__main__':
         window_width = 640  
         window_height = 480
         window_1 = Window(window_width, window_height, 'Main Window')
-        window_2 = Window(window_width, window_height, 'Casted Window')
+        #window_2 = Window(window_width, window_height, 'Casted Window')
 
         #GRID CELL SIZE SCALING VALUE
         overhead_scaling = 50
@@ -299,6 +318,8 @@ if __name__ == '__main__':
         cell_list.append(Cell(np.array([2,-3])))
         cell_list.append(Cell(np.array([2,-2])))
         cell_list.append(Cell(np.array([-2,-2])))
+        cell_list.append(Cell(np.array([-2,-1])))
+        cell_list.append(Cell(np.array([-2,0])))
 
         for i in range(len(cell_list)):
             world_pos = cell_list[i].world_position(overhead_scaling)
@@ -330,19 +351,20 @@ if __name__ == '__main__':
 
     @window_1.event
     def on_draw():
+
         ray_circle = []
     
         """
         Keyboard Input Settings
         """
         if keys_pressed[key.W]:
-            avatar.move(Relative_Direction.FORWARD)
+            avatar.move(Relative_Direction.FORWARD, avatar.direction)
         if keys_pressed[key.S]:
-            avatar.move(Relative_Direction.BACK)
+            avatar.move(Relative_Direction.BACK, avatar.direction)
         if keys_pressed[key.A]:
-            avatar.move(Relative_Direction.LEFT)
+            avatar.move(Relative_Direction.LEFT, avatar.direction)
         if keys_pressed[key.D]:
-            avatar.move(Relative_Direction.RIGHT)
+            avatar.move(Relative_Direction.RIGHT, avatar.direction)
         if keys_pressed[key.Q]:
             avatar.rotate(Relative_Direction.LEFT)
         if keys_pressed[key.E]:
@@ -352,19 +374,37 @@ if __name__ == '__main__':
         
         #print(f'Position: {avatar.position} Direction: {avatar.direction}')
 
-        fov = 70
+        fov = 90
         info = []
+        global walls 
         walls = []
-        for x in range(int(math.degrees(avatar.direction) - fov/2), int(math.degrees(avatar.direction) + fov/2), 1):
-            info.append(raycast(cell_list, avatar.position, math.radians(x + 1), overhead_scaling, window_width, window_height, fov))
+
+        #for x in range(0, 360, 1):
+        #    info.append(raycast(cell_list, avatar.position, math.radians(x + 1), overhead_scaling, window_width, window_height, fov))
+
+        print ('Check Here', range(int(math.degrees(avatar.direction) - fov/2), int(math.degrees(avatar.direction) + fov/2)))
+
         
+        for x in range(int(math.degrees(avatar.direction) - fov/2), int(math.degrees(avatar.direction) + fov/2), 1):
+            if x > 0:
+                z = x
+            else:
+                z = x + 360
+            info.append(raycast(cell_list, avatar.position, math.radians((x + 1)), overhead_scaling, window_width, window_height, fov))
+        
+        sky = shapes.Rectangle(0,window_height/2, window_width, window_height/2, (50, 50, 50, 255), walls_batch, background)
+        floor = shapes.Rectangle(0,0, window_width, window_height/2, (50, 50, 255, 255), walls_batch, background)
+
         print((info))
         for x in range(len(info)):
            # print('Returned Values', x, info[x]['magnitude'])
             if info[x] != 0 and info[x] != None:
+                #true_angle = math.radians(math.degrees(avatar.direction))
+                
+                correction = (info[x]['angle'] - avatar.direction)
                 walls.append(
                     #window_width * ((ray_direction)/fov), ((window_height - (window_height/magnitude)) / 2), window_width * 1/fov, window_height/magnitude, (185, 185, 0, 255), batch = walls_batch, group = foreground
-                    shapes.Rectangle(window_width * (x/fov), 0 + ((window_height - window_height/info[x]['magnitude'])/2), window_width * (1/fov),window_height/info[x]['magnitude'], info[x]['color'], walls_batch, foreground)
+                    shapes.Rectangle(window_width * (x/fov), 0 + ((window_height - window_height/(info[x]['magnitude'] * math.cos(correction)))/2), window_width * (1/fov),window_height/(info[x]['magnitude'] * math.cos(correction)), info[x]['color'], walls_batch, foreground)
                 )
             
         #    #print(x)
@@ -400,9 +440,11 @@ if __name__ == '__main__':
         walls_batch.draw()
         fps_display.draw()
 
-    @window_2.event
-    def on_draw():
-        window_2.clear()
-        walls_batch.draw()
+        #window_2.draw()
+
+
+ 
+
+
 
     app.run(1/60)
